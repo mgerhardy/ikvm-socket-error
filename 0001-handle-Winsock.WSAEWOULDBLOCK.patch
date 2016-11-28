@@ -1,0 +1,36 @@
+From 6bc55d6e037a406a3e32e3fbb5539844a8e93e3c Mon Sep 17 00:00:00 2001
+From: Martin Gerhardy <martin.gerhardy@gmail.com>
+Date: Fri, 25 Nov 2016 17:56:47 +0100
+Subject: [PATCH] handle Winsock.WSAEWOULDBLOCK
+
+---
+ runtime/openjdk/java.net.SocketInputStream.cs | 11 +++++++++++
+ 1 file changed, 11 insertions(+)
+
+diff --git a/runtime/openjdk/java.net.SocketInputStream.cs b/runtime/openjdk/java.net.SocketInputStream.cs
+index 800eb4f..e2e5e12 100644
+--- a/runtime/openjdk/java.net.SocketInputStream.cs
++++ b/runtime/openjdk/java.net.SocketInputStream.cs
+@@ -103,6 +103,17 @@ static class Java_java_net_SocketInputStream
+ 					case Winsock.WSAETIMEDOUT:
+ 						throw new SocketTimeoutException("Read timed out");
+ 
++					/**
++					 * Resource temporarily unavailable.
++					 * This error is returned from operations on nonblocking sockets that cannot be completed immediately,
++					 * for example recv when no data is queued to be read from the socket. It is a nonfatal error, and the
++					 * operation should be retried later. It is normal for WSAEWOULDBLOCK to be reported as the result from
++					 * calling connect on a nonblocking SOCK_STREAM socket, since some time must elapse for the connection
++					 * to be established.
++					 */
++					case Winsock.WSAEWOULDBLOCK:
++						// this doesn't occur on java, only in the c# code, so maybe the sockets are created with different
++						// socket options.
++						return 1; // if we return 0 here, we get an eof exception, but 1 is of course also not an option
++
+ 					default:
+ 						throw net_util_md.NET_ThrowCurrent("recv failed");
+ 				}
+-- 
+2.10.2
+
